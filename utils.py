@@ -1,4 +1,5 @@
 import MySQLdb, re
+from datetime import datetime
 from secrets import corpora # Bad! Fix this later.
 class DatabaseConnection:
     # DatabaseConnection represents a connection to the database (defaults to Corpora)
@@ -41,7 +42,25 @@ class CorporaQuery:
     # Abstracts a search query. Used to generate a SQL statement from a complex set of customizable
     # user-defined parameters.
 
-    def __init__(self, args):
+    def __init__(self, args, data_type):
+        self.data_type = data_type
+
+        if data_type == 'specific_article':
+            self.process_specific_article(args)
+
+        elif data_type == 'multiple_articles':
+            self.process_multiple_articles(args)
+
+        elif data_type == 'free_weibo':
+            self.process_free_weibo(args)
+
+        self.sql = self.construct_sql()
+
+    def process_specific_article(self, args):
+        self.kp = args['kp']
+
+    def process_multiple_articles(self, args):
+        # Default to 1 relevance if none specified - 0 will return all articles
         if args['min_relevancy'] is None:
             self.min_relevance = 1
         else:
@@ -51,11 +70,17 @@ class CorporaQuery:
         self.first_date = args['time_start']
         self.last_date = args['time_end']
         self.article_limit = args['article_limit']
-        self.search_string = args['search_string'].replace("_"," ")
+
+        # Remove underscores from search string to convert to English phrase
+        if args['search_string']:
+            self.search_string = args['search_string'].replace("_"," ")
+        else:
+            self.search_string = None
 
         self.set_flags()
-        self.format_dates()
-        self.sql = self.construct_sql()
+
+    def process_free_weibo(self, args):
+        pass
 
     def get_result(self):
         # get_result()
@@ -63,19 +88,17 @@ class CorporaQuery:
         corpora = DatabaseConnection()
 
         result = corpora.perform(self.sql)
-
         # Catch empty results
         if result:
-            cleaned_result = clean_search_results(result)
+            cleaned_result = clean_search_results(result, self.data_type)
             return cleaned_result
         else:
             return None
 
     def set_flags(self):
         # set_flags()
-        # Analyzes input data and sets a number of flags that instruct further methods how
+        # Analyzes input data and sets a number of flags that inform further methods how
         # to frame their SQL statements
-
         if self.search_string and len(self.search_string) is not 0:
             self.use_keywords = True
         else:
@@ -134,6 +157,12 @@ class CorporaQuery:
         # that polls Corpora for all articles meeting the specified criteria
         sql = "SELECT *"
 
+        # If looking for specific article, skip over complex sql construction
+        if self.data_type == 'specific_article':
+            sql = "{0} FROM articles WHERE kp = '{1}';".format(sql, self.kp)
+            return sql
+
+        # If using search functinality -> process keywords
         if self.use_keywords:
             relevance_dict = self.build_keyword_relevance()
             title_SQL = relevance_dict['title_SQL']
@@ -143,8 +172,7 @@ class CorporaQuery:
             con_string = ' + '.join(content_SQL)
 
             if self.cat_kp_list:
-                cat_string = ','.join([str(k) for k in cat_kp_list])
-
+                cat_string = ','.join([str(k) for k in self.cat_kp_list])
 
         if self.use_keywords:
             sql = "{0}, ({1} + {2}) AS relevance FROM articles a".format(sql, title_string, con_string)
@@ -194,7 +222,7 @@ def parse_categories(category_string):
         # Match string to a list of RSS feeds
         sql = "SELECT feed FROM rss WHERE category = '{0}'".format(category_string)
         feed_list = corpora.perform(sql)
-        feed_list = [feed for feed in feed_list[0]]
+        feed_list = ["'{0}'".format(feed) for feed in feed_list[0]]
         # Create list of all article KP's in the specified category
         sql = "SELECT article_id FROM article_source WHERE source IN ({0})".format(','.join(feed_list))
 
@@ -225,7 +253,7 @@ def filter_search_keys(query):
             words.append(key)
     return words
 
-def clean_search_results(dirty_results):
+def clean_search_results(dirty_results, data_type):
     # clean_search_results():
     # Accepts raw tuple result from corpora_search, builds and returns
     # a list of dicts describing each extracted article
@@ -234,26 +262,28 @@ def clean_search_results(dirty_results):
     for dirty in dirty_results:
         clean_results = {}
 
-        clean_results['kp'] = dirty[0]
-        clean_results['url'] = dirty[3]
-        clean_results['title'] = dirty[4]
-        clean_results['content'] = dirty[5]
-        clean_results['summary'] = dirty[6]
-        clean_results['keyword'] = dirty[7]
-        clean_results['lang_claimed'] = dirty[8]
-        clean_results['lang_detected'] = dirty[9]
-        clean_results['confidence'] = dirty[10]
-        clean_results['pub_date'] = dirty[11]
-        clean_results['ret_date'] = dirty[12]
-        clean_results['processed'] = dirty[13]
-        clean_results['marked_by_proc'] = dirty[14]
-        clean_results['bag_of_words'] = dirty[15]
-        try:
-            # If the user didn't use keywords, there will be no relevance in search clean_results
-            clean_results['relevance'] = dirty[16]
-        except IndexError:
-            # Substitute 0 as a flag
-            clean_results['relevance'] = 0
+        if data_type == 'specific_article' or 'multiple_articles':
+            clean_results['kp'] = dirty[0]
+            clean_results['url'] = dirty[3]
+            clean_results['title'] = dirty[4]
+            clean_results['content'] = dirty[5]
+            clean_results['summary'] = dirty[6]
+            clean_results['keyword'] = dirty[7]
+            clean_results['lang_claimed'] = dirty[8]
+            clean_results['lang_detected'] = dirty[9]
+            clean_results['confidence'] = dirty[10]
+            clean_results['pub_date'] = dirty[11]
+            clean_results['ret_date'] = dirty[12]
+            clean_results['processed'] = dirty[13]
+            clean_results['marked_by_proc'] = dirty[14]
+            clean_results['bag_of_words'] = dirty[15]
+            try:
+                # If the user didn't use keywords, there will be no
+                # relevance in search clean_results
+                clean_results['relevance'] = dirty[16]
+            except IndexError:
+                # Substitute 0 as a flag
+                clean_results['relevance'] = 0
 
         clean_list.append(clean_results)
     return clean_list
@@ -280,6 +310,5 @@ def metric_primer(tables, toggle_counts=True, toggle_category=True):
         occurences = [c[1] for c in result]
 
         result_dict['rss'] = zip(categories, occurences)
-        print result_dict['rss']
 
     return result_dict
