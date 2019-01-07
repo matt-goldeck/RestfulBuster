@@ -88,14 +88,11 @@ class CorporaQuery:
         corpora = DatabaseConnection()
 
         result = corpora.perform(self.sql)
-        print "dirty:", result
         # Catch empty results
         if result:
             cleaned_result = clean_search_results(result, self.data_type)
-            print "clean", cleaned_result
             return cleaned_result
         else:
-            print "No results!"
             return None
 
     def set_flags(self):
@@ -159,12 +156,10 @@ class CorporaQuery:
         # Uses flags and substatements generated thus far to construct a massive SQL statement
         # that polls Corpora for all articles meeting the specified criteria
         sql = "SELECT *"
-        print("Constructing sql!")
 
         # If looking for specific article, skip over complex sql construction
         if self.data_type == 'specific_article':
             sql = "{0} FROM articles WHERE kp = '{1}';".format(sql, self.kp)
-            print sql
             return sql
 
         # If using search functinality -> process keywords
@@ -177,7 +172,7 @@ class CorporaQuery:
             con_string = ' + '.join(content_SQL)
 
             if self.cat_kp_list:
-                cat_string = ','.join([str(k) for k in cat_kp_list])
+                cat_string = ','.join([str(k) for k in self.cat_kp_list])
 
         if self.use_keywords:
             sql = "{0}, ({1} + {2}) AS relevance FROM articles a".format(sql, title_string, con_string)
@@ -214,7 +209,6 @@ class CorporaQuery:
         if int(self.article_limit) > 0:
             sql = "{0} LIMIT {1}".format(sql, self.article_limit)
 
-        print sql
         return sql
 
 def parse_categories(category_string):
@@ -228,7 +222,7 @@ def parse_categories(category_string):
         # Match string to a list of RSS feeds
         sql = "SELECT feed FROM rss WHERE category = '{0}'".format(category_string)
         feed_list = corpora.perform(sql)
-        feed_list = [feed for feed in feed_list[0]]
+        feed_list = ["'{0}'".format(feed) for feed in feed_list[0]]
         # Create list of all article KP's in the specified category
         sql = "SELECT article_id FROM article_source WHERE source IN ({0})".format(','.join(feed_list))
 
@@ -316,6 +310,5 @@ def metric_primer(tables, toggle_counts=True, toggle_category=True):
         occurences = [c[1] for c in result]
 
         result_dict['rss'] = zip(categories, occurences)
-        print result_dict['rss']
 
     return result_dict
