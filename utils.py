@@ -105,7 +105,7 @@ class CorporaQuery:
             self.use_keywords = False
 
         if self.article_limit is None:
-            self.article_limit = "0" # Pass 0 as flag -> signal no limit
+            self.article_limit = "500" # Default to 500 articles.
 
         self.format_dates()
 

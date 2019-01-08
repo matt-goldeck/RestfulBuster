@@ -43,9 +43,9 @@ class Specific_Article(Resource):
 
         # Process results; datetime not json-serializable, better solution exists (?)
         if retrieved_article:
-            response = retrieved_article
-            response[0]['pub_date'] = str(response[0]['pub_date'])
-            response[0]['ret_date'] = str(response[0]['ret_date'])
+            response = retrieved_article[0]
+            response['pub_date'] = str(response['pub_date'])
+            response['ret_date'] = str(response['ret_date'])
         else:
             response = none
 
