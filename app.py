@@ -9,36 +9,20 @@ api = Api(app)
 
 class Multiple_Articles(Resource):
     def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument('min_relevancy', type=int, help='The minimum relevancy score to return an article.')
-        parser.add_argument('time_start', help='The earliest point that an article could have been retrieved.')
-        parser.add_argument('time_end', help='The latest point that an article could have been retrieved.')
-        parser.add_argument('search_string', help='A string of words seperated by underscores.')
-        parser.add_argument('article_limit', type=int, help='The maximum number of articles to return.')
-        parser.add_argument('category', help='The category of RSS feed the article came from. Note: Only one')
-        args = parser.parse_args()
-
-        query = CorporaQuery(args, data_type="multiple_articles")
-        retrieved_articles = query.get_result()
-
-        article_list = []
-        # Process results; datetime not json-serializable, better solution exists (?)
-        if retrieved_articles:
-            for article in retrieved_articles:
-                article['pub_date'] = str(article['pub_date'])
-                article['ret_date'] = str(article['ret_date'])
-                article_list.append(article)
+        data_type = 'articles'
+        article_list = get_corpora_results(data_type)
 
         response = {'count':len(article_list), 'articles':article_list}
         return response
 
 class Specific_Article(Resource):
     def get(self):
+        # one argument, no need to use Build_Get()
         parser = reqparse.RequestParser()
         parser.add_argument('kp', type=int, help='Unique identifier of stored article')
         args = parser.parse_args()
 
-        query = CorporaQuery(args, data_type='specific_article')
+        query = CorporaQuery(args, plurality=False, data_type='articles')
         retrieved_article = query.get_result()
 
         # Process results; datetime not json-serializable, better solution exists (?)
@@ -52,12 +36,13 @@ class Specific_Article(Resource):
         return response
 class Corpora_Metrics(Resource):
     def get(self):
+        # Very specific usage -> directly use DC() instead of CQ()
         corpora = DatabaseConnection()
 
         sql = "SELECT (SELECT COUNT(*) FROM articles) AS article_count, \
         (SELECT COUNT(*) FROM rss) AS rss_count, (SELECT COUNT(*) FROM \
         freeweibo) AS freeweibo_count, (SELECT COUNT(*) FROM freeweibo_topics) \
-        AS freeweibo_topic_count FROM dual;"
+        AS freeweibo_topic_count, (SELECT COUNT(*) FROM novaya_gazeta) AS novaya_count FROM dual;"
 
         dirty_result = corpora.perform(sql)[0]
         clean_result = {}
@@ -65,15 +50,70 @@ class Corpora_Metrics(Resource):
         clean_result['rss_count'] = dirty_result[1]
         clean_result['freeweibo_count'] = dirty_result[2]
         clean_result['freeweibo_topic_count'] = dirty_result[3]
+        clean_result['novaya_count'] = dirty_result[4]
 
         response = clean_result
 
         return response
 
+class Free_Weibo(Resource):
+    def get(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('text')
+        result = parser.parse_args()
+        return result
+
+class Novaya_Gazeta(Resource):
+    def get(self):
+        data_type = 'novaya_gazeta'
+        article_list = get_corpora_results(data_type)
+
+        response = {'count':len(article_list), 'articles':article_list}
+        return response
+
+
 api.add_resource(Multiple_Articles, '/RestfulBuster/multi_article')
 api.add_resource(Specific_Article, '/RestfulBuster/spec_article')
 api.add_resource(Corpora_Metrics, '/RestfulBuster/corpora_metrics')
+api.add_resource(Free_Weibo, '/RestfulBuster/freeweibo')
+api.add_resource(Novaya_Gazeta, '/RestfulBuster/multi_novaya')
 
+def get_corpora_results(data_type):
+    # get_corpora_results()
+    # Assembles a paraser object custom tailored to the data_type and performs a query
+    # with it, returning a formatted list of dictionary results. Intended for search functionality
 
+    parser = build_get_parser(data_type=data_type)
+    args = parser.parse_args()
+
+    query = CorporaQuery(args, plurality = True, data_type=data_type)
+    retrieved_items = query.get_result()
+
+    item_list = []
+    # Process results; datetime not json-serializable, better solution exists (?)
+    if retrieved_items:
+        print retrieved_items
+        for item in retrieved_items:
+            if item:
+                item['pub_date'] = str(item['pub_date'])
+                item['ret_date'] = str(item['ret_date'])
+                item_list.append(item)
+
+    return item_list
+
+def build_get_parser(data_type):
+    # Builds a bespoke parser object for a given datatype and returns it
+
+    parser = reqparse.RequestParser()
+    parser.add_argument('min_relevancy', type=int, help='The minimum relevancy score to return an item.')
+    parser.add_argument('time_start', help='The earliest point that an item could have been retrieved.')
+    parser.add_argument('time_end', help='The latest point that an item could have been retrieved.')
+    parser.add_argument('search_string', help='A string of words seperated by underscores.')
+    parser.add_argument('item_limit', type=int, help='The maximum number of items to return.')
+
+    if data_type == 'articles':
+        parser.add_argument('category', help='The category of RSS feed the article came from. Note: Only one')
+
+    return parser
 if __name__ == '__main__':
     app.run(debug=True)
