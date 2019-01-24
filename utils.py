@@ -42,45 +42,43 @@ class CorporaQuery:
     # Abstracts a search query. Used to generate a SQL statement from a complex set of customizable
     # user-defined parameters.
 
-    def __init__(self, args, data_type):
+    def __init__(self, args, plurality, data_type):
+        self.plurality = plurality
         self.data_type = data_type
 
-        if data_type == 'specific_article':
-            self.process_specific_article(args)
-
-        elif data_type == 'multiple_articles':
-            self.process_multiple_articles(args)
-
-        elif data_type == 'free_weibo':
-            self.process_free_weibo(args)
-
+        self.process_parameters(args)
         self.sql = self.construct_sql()
 
-    def process_specific_article(self, args):
-        self.kp = args['kp']
+    def process_parameters(self, args):
+        # process_parameters()
+        # Robust class function that determines which item to search for and how to search for it
 
-    def process_multiple_articles(self, args):
-        # Default to 1 relevance if none specified - 0 will return all articles
-        if args['min_relevancy'] is None:
-            self.min_relevance = 1
+        # Multiple items a.k.a. hybrid search functionality
+        if self.plurality:
+            if args['min_relevancy']:
+                self.min_relevance = args['min_relevancy']
+            else:
+                self.min_relevance = 1
+
+            self.first_date = args['time_start']
+            self.last_date = args['time_end']
+            self.item_limit = args['item_limit']
+
+            # Perform tests on the data to determine which functionality to perform
+            self.set_flags(args)
+
+            # Format dates for use in SQL
+            self.format_dates()
+
+        # Retrieving single item a.k.a. specific retrieval
         else:
-            self.min_relevance = args['min_relevancy']
-
-        self.cat_kp_list = parse_categories(args['category'])
-        self.first_date = args['time_start']
-        self.last_date = args['time_end']
-        self.article_limit = args['article_limit']
-
-        # Remove underscores from search string to convert to English phrase
-        if args['search_string']:
-            self.search_string = args['search_string'].replace("_"," ")
-        else:
-            self.search_string = None
-
-        self.set_flags()
-
-    def process_free_weibo(self, args):
-        pass
+            self.kp = args['kp']
+            if self.data_type == 'articles':
+                pass
+            elif self.data_type == 'freeweibo':
+                self.weibo_id == args['weibo_id']
+            elif self.data_type == 'novaya_gazeta':
+                pass
 
     def get_result(self):
         # get_result()
@@ -95,22 +93,31 @@ class CorporaQuery:
         else:
             return None
 
-    def set_flags(self):
+    def set_flags(self, args):
         # set_flags()
         # Analyzes input data and sets a number of flags that inform further methods how
         # to frame their SQL statements
-        if self.search_string and len(self.search_string) is not 0:
-            self.use_keywords = True
+
+        # Was a search string specified and is it legal? If so, format it and store it.
+        if args['search_string'] and len(args['search_string']) is not 0:
+                self.search_string = args['search_string'].replace("_"," ")
         else:
-            self.use_keywords = False
+            self.search_string = None
 
-        if self.article_limit is None:
-            self.article_limit = "500" # Default to 500 articles.
+        if self.item_limit is None:
+            self.item_limit = "500" # Default max item limit to 500
 
-        self.format_dates()
+        # Specific data_type functionality
+        if self.data_type == 'articles' and args['category']:
+            self.category = args['category']
+            self.cat_kp_list = parse_categories(self.category)
+        else:
+            self.category = None
+            self.cat_kp_list = None
+
 
     def format_dates(self):
-        #format_dates()
+        # format_dates()
         # Extension of set_flags used to set date flags and format them for
         # use in final SQL statement
 
@@ -122,7 +129,7 @@ class CorporaQuery:
         else:
             self.sort_by_first = False
 
-        if (self.last_date):
+        if self.last_date:
             self.sort_by_last = True
 
             self.last_date.replace('-', '')
@@ -134,36 +141,42 @@ class CorporaQuery:
         # build_keyword_relevance()
         # Parses keywords and constructs substatements that search for them, and add to
         # an article's 'relevance score' if found
+
         keyword_list = filter_search_keys(self.search_string)
         esc_search_string = re.escape(self.search_string)
-        title_SQL = []
-        content_SQL = []
 
+        # If data type has a title -> look in it
+        title_SQL = []
+        if self.data_type == 'articles':
+            # Full search string appearance
+            title_SQL.append("if (title LIKE '%{0}%',10,0)".format(esc_search_string)) # 10 pts - title
+
+        content_SQL = []
         # Full search string appearance
-        title_SQL.append("if (title LIKE '%{0}%',10,0)".format(esc_search_string)) # 10 pts - title
         content_SQL.append("if (content LIKE '%{0}%',7,0)".format(esc_search_string))  # 7 pts - content
 
         # Keyword appearance
         for key in keyword_list:
             escaped_key = re.escape(key)
-            title_SQL.append("if (title LIKE '%{0}%',5,0)".format(escaped_key))  # 5 pts - title
+            if self.data_type == 'articles':
+                title_SQL.append("if (title LIKE '%{0}%',5,0)".format(escaped_key))  # 5 pts - title
             content_SQL.append("if (content LIKE '%{0}%',3,0)".format(escaped_key))  # 3 - content
 
         return {'title_SQL':title_SQL, 'content_SQL':content_SQL}
 
     def construct_sql(self):
         # construct_sql()
-        # Uses flags and substatements generated thus far to construct a massive SQL statement
-        # that polls Corpora for all articles meeting the specified criteria
+        # Uses flags and substatements generated thus far to construct a big SQL statement
+        # that polls Corpora for all items meeting the specified criteria
         sql = "SELECT *"
 
-        # If looking for specific article, skip over complex sql construction
-        if self.data_type == 'specific_article':
-            sql = "{0} FROM articles WHERE kp = '{1}';".format(sql, self.kp)
+        # If not plural, skip over complex sql construction
+        if not self.plurality:
+            sql = "SELECT * FROM {0} WHERE kp = '{1}'".format(self.data_type, self.kp)
             return sql
 
         # If using search functinality -> process keywords
-        if self.use_keywords:
+        if self.search_string:
             relevance_dict = self.build_keyword_relevance()
             title_SQL = relevance_dict['title_SQL']
             content_SQL = relevance_dict['content_SQL']
@@ -174,7 +187,8 @@ class CorporaQuery:
             if self.cat_kp_list:
                 cat_string = ','.join([str(k) for k in self.cat_kp_list])
 
-        if self.use_keywords:
+        # Long branching decision tree to build keyword search dependent on multiple variables
+        if self.search_string:
             sql = "{0}, ({1} + {2}) AS relevance FROM articles a".format(sql, title_string, con_string)
             # If category specified -> look only in that category
             if self.cat_kp_list:
@@ -200,14 +214,14 @@ class CorporaQuery:
         if self.sort_by_last:
             sql = "{0} pub_date < '{1}'".format(sql, self.last_date)
         # If using keywords, order by relevance in descending order
-        if self.use_keywords:
+        if self.search_string:
             sql = "{0} ORDER BY relevance DESC".format(sql)
         # If not doing any filtering whatsoever -> pull all the articles
-        if not self.sort_by_first and not self.sort_by_last and not self.use_keywords:
+        if not self.sort_by_first and not self.sort_by_last and not self.search_string:
             sql = "{0} FROM articles a".format(sql)
-        # If enforcing limit -> do so ; Note '0' flag passed in url == no limit
-        if int(self.article_limit) > 0:
-            sql = "{0} LIMIT {1}".format(sql, self.article_limit)
+        # If enforcing limit -> do so;
+        if self.item_limit and int(self.item_limit) > 0:
+            sql = "{0} LIMIT {1}".format(sql, self.item_limit)
 
         return sql
 
@@ -217,7 +231,6 @@ def parse_categories(category_string):
     # to build and return a list of KPs for each article in this category
 
     corpora = DatabaseConnection()
-
     if category_string:
         # Match string to a list of RSS feeds
         sql = "SELECT feed FROM rss WHERE category = '{0}'".format(category_string)
@@ -262,7 +275,7 @@ def clean_search_results(dirty_results, data_type):
     for dirty in dirty_results:
         clean_results = {}
 
-        if data_type == 'specific_article' or 'multiple_articles':
+        if data_type == 'articles':
             clean_results['kp'] = dirty[0]
             clean_results['url'] = dirty[3]
             clean_results['title'] = dirty[4]
@@ -285,30 +298,10 @@ def clean_search_results(dirty_results, data_type):
                 # Substitute 0 as a flag
                 clean_results['relevance'] = 0
 
+        elif data_type == 'freeweibo':
+            pass
+        elif data_type == 'novaya_gazeta':
+            pass
+
         clean_list.append(clean_results)
     return clean_list
-
-def metric_primer(tables, toggle_counts=True, toggle_category=True):
-    # metric_primer():
-    # Semi-robust method to poll DB for metrics
-    # Not as useful as originally intended - probably not necessary anymore
-    result_dict = {}
-    corpora = DatabaseConnection()
-
-    # Pull counts of each request metric
-    if toggle_counts:
-        sql = ' UNION ALL '.join('SELECT count(*) FROM {0}'.format(table) for table in tables)
-        count = corpora.perform(sql)
-        result_dict['count'] = [c[0] for  c in count]
-
-    # Grab categories and the count of feeds in each
-    if toggle_category:
-        sql = "SELECT category, COUNT(*) AS 'amount' FROM rss GROUP BY category;"
-
-        result = corpora.perform(sql)
-        categories = [c[0] for c in result]
-        occurences = [c[1] for c in result]
-
-        result_dict['rss'] = zip(categories, occurences)
-
-    return result_dict
