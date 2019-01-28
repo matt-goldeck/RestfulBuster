@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import MySQLdb, re
 from datetime import datetime
 from secrets import corpora # Bad! Fix this later.
@@ -15,12 +16,16 @@ class DatabaseConnection:
             self.host = credentials['host']
             self.username = credentials['username']
     def connect(self):
-        self.db = MySQLdb.connect(host=self.host, user=self.username, passwd=self.password, db=self.database)
+        self.db = MySQLdb.connect(host=self.host, user=self.username, passwd=self.password,
+         db=self.database, use_unicode=True)
         self.cursor = self.db.cursor()
 
     def terminate(self):
         if self.cursor:
+            self.db.commit()
+
             self.cursor.close()
+            self.db.close()
 
     def perform(self, sql):
         self.connect()
@@ -32,10 +37,8 @@ class DatabaseConnection:
         result = self.cursor.fetchall()
 
         self.terminate()
-        if result:
-            return result
-        else:
-            return None
+
+        return result
 
 class CorporaQuery:
     # CorporaQuery
@@ -43,11 +46,12 @@ class CorporaQuery:
     # user-defined parameters.
 
     def __init__(self, args, plurality, data_type):
-        self.plurality = plurality
-        self.data_type = data_type
+        self.plurality = plurality # Determines retrieval or search
+        self.data_type = data_type # Determines what we're looking for
 
         self.process_parameters(args)
         self.sql = self.construct_sql()
+        self.scrubbed_results = None
 
     def process_parameters(self, args):
         # process_parameters()
@@ -73,25 +77,22 @@ class CorporaQuery:
         # Retrieving single item a.k.a. specific retrieval
         else:
             self.kp = args['kp']
-            if self.data_type == 'articles':
-                pass
-            elif self.data_type == 'freeweibo':
-                self.weibo_id == args['weibo_id']
-            elif self.data_type == 'novaya_gazeta':
-                pass
-
-    def get_result(self):
+    def get_result(self, repeat_search=False):
         # get_result()
         # Queries and returns formatted result associated with this query
-        corpora = DatabaseConnection()
 
-        result = corpora.perform(self.sql)
-        # Catch empty results
-        if result:
-            cleaned_result = clean_search_results(result, self.data_type)
-            return cleaned_result
-        else:
-            return None
+        corpora = DatabaseConnection()
+        print self.sql
+
+        # If we haven't generated a result or we're repeating the search, query the DB
+        if not self.scrubbed_results or repeat_search:
+            dirty_result = corpora.perform(self.sql)
+            if dirty_result:
+                self.scrub_results(dirty_result)
+            else:
+                self.scrubbed_results = None
+
+        return self.scrubbed_results
 
     def set_flags(self, args):
         # set_flags()
@@ -114,7 +115,6 @@ class CorporaQuery:
         else:
             self.category = None
             self.cat_kp_list = None
-
 
     def format_dates(self):
         # format_dates()
@@ -143,7 +143,7 @@ class CorporaQuery:
         # an article's 'relevance score' if found
 
         keyword_list = filter_search_keys(self.search_string)
-        esc_search_string = re.escape(self.search_string)
+        esc_search_string = re.escape(self.search_string).encode("utf8")
 
         # If data type has a title -> look in it
         title_SQL = []
@@ -189,7 +189,8 @@ class CorporaQuery:
 
         # Long branching decision tree to build keyword search dependent on multiple variables
         if self.search_string:
-            sql = "{0}, ({1} + {2}) AS relevance FROM articles a".format(sql, title_string, con_string)
+            sql = "{0}, ({1} + {2}) AS relevance FROM {3} a".format(sql, title_string, con_string,
+            self.data_type)
             # If category specified -> look only in that category
             if self.cat_kp_list:
                 sql = "{0} WHERE kp IN ({1})".format(sql, cat_string)
@@ -199,7 +200,7 @@ class CorporaQuery:
                 sql = "{0} AND ".format(sql)
         # If not using keywords -> begin SQL query with date
         elif self.sort_by_first or self.sort_by_last:
-            sql = "{0} FROM articles a".format(sql)
+            sql = "{0} FROM {1} a".format(sql, self.data_type)
             # If category specified -> look only in that category
             if self.cat_kp_list:
                 sql = "{0} WHERE kp IN ({1})".format(sql, cat_string)
@@ -218,12 +219,29 @@ class CorporaQuery:
             sql = "{0} ORDER BY relevance DESC".format(sql)
         # If not doing any filtering whatsoever -> pull all the articles
         if not self.sort_by_first and not self.sort_by_last and not self.search_string:
-            sql = "{0} FROM articles a".format(sql)
+            sql = "{0} FROM {1} a".format(sql, self.data_type)
         # If enforcing limit -> do so;
         if self.item_limit and int(self.item_limit) > 0:
             sql = "{0} LIMIT {1}".format(sql, self.item_limit)
 
         return sql
+
+    def scrub_results(self, dirty_results):
+        clean_list = []
+
+        for dirty in dirty_results:
+            print dirty
+            if self.data_type == 'articles':
+                clean_result = build_article_dictionary(dirty)
+            elif self.data_type == 'novaya_gazeta':
+                clean_result = build_novaya_dictionary(dirty)
+            elif self.data_type == 'freeweibo':
+                clean_result = build_freeweibo_dictionary(dirty)
+
+            clean_list.append(clean_result)
+
+        self.scrubbed_results = clean_list
+
 
 def parse_categories(category_string):
     # parse_categories():
@@ -255,53 +273,84 @@ def filter_search_keys(query):
     # Returns list of strings.
     query = query.split()
     words = []
-    # TODO: Import list from a maintained CSV?
+    # TODO: Import list from a maintained CSV? Non-linear search with sorted stop_word_list?
     stop_word_list = ["in", "it", "a", "the", "of", "or", "I", "you", "he",
      "me", "us", "they", "she", "to", "but", "that", "this", "those", "then",
      "table", "drop", "delete"]
     c = 0
-    # Collect non-stopwords and return
+    # Collect non-stopwords, encode to utf8, and return
     for key in query:
         if key.lower() not in stop_word_list:
-            words.append(key)
+            words.append(key.encode("utf8"))
     return words
 
-def clean_search_results(dirty_results, data_type):
-    # clean_search_results():
-    # Accepts raw tuple result from corpora_search, builds and returns
-    # a list of dicts describing each extracted article
-    clean_list = []
+def build_article_dictionary(dirty_result):
+    # build_article_dictionary()
+    # Builds dictionary representing an RSS article from a dirty SQL result
+    clean_result = {}
 
-    for dirty in dirty_results:
-        clean_results = {}
+    clean_result['kp'] = dirty_result[0]
+    clean_result['url'] = dirty_result[3]
+    clean_result['title'] = dirty_result[4]
+    clean_result['content'] = dirty_result[5]
+    clean_result['summary'] = dirty_result[6]
+    clean_result['keyword'] = dirty_result[7]
+    clean_result['lang_claimed'] = dirty_result[8]
+    clean_result['lang_detected'] = dirty_result[9]
+    clean_result['confidence'] = dirty_result[10]
+    clean_result['pub_date'] = dirty_result[11]
+    clean_result['ret_date'] = dirty_result[12]
+    clean_result['processed'] = dirty_result[13]
+    clean_result['marked_by_proc'] = dirty_result[14]
+    clean_result['bag_of_words'] = dirty_result[15]
 
-        if data_type == 'articles':
-            clean_results['kp'] = dirty[0]
-            clean_results['url'] = dirty[3]
-            clean_results['title'] = dirty[4]
-            clean_results['content'] = dirty[5]
-            clean_results['summary'] = dirty[6]
-            clean_results['keyword'] = dirty[7]
-            clean_results['lang_claimed'] = dirty[8]
-            clean_results['lang_detected'] = dirty[9]
-            clean_results['confidence'] = dirty[10]
-            clean_results['pub_date'] = dirty[11]
-            clean_results['ret_date'] = dirty[12]
-            clean_results['processed'] = dirty[13]
-            clean_results['marked_by_proc'] = dirty[14]
-            clean_results['bag_of_words'] = dirty[15]
-            try:
-                # If the user didn't use keywords, there will be no
-                # relevance in search clean_results
-                clean_results['relevance'] = dirty[16]
-            except IndexError:
-                # Substitute 0 as a flag
-                clean_results['relevance'] = 0
+    clean_result = try_relevance(dirty_result, clean_result)
 
-        elif data_type == 'freeweibo':
-            pass
-        elif data_type == 'novaya_gazeta':
-            pass
+    return clean_result
 
-        clean_list.append(clean_results)
-    return clean_list
+def build_novaya_dictionary(dirty_result):
+    # build_novaya_dictionary()
+    # Builds dictionary representing a Novaya article from a dirty SQL result
+    clean_result = {}
+
+    clean_result['kp'] = dirty_result[0]
+    clean_result['pub_date'] = dirty_result[1]
+    clean_result['author'] = dirty_result[2]
+    clean_result['original_post'] = dirty_result[3]
+    clean_result['content'] = dirty_result[4]
+    clean_result['category'] = dirty_result[5]
+    clean_result['ret_date'] = dirty_result[6]
+
+    clean_result = try_relevance(dirty_result, clean_result)
+
+    return clean_result
+
+def build_freeweibo_dictionary(dirty_result):
+    # build_freeweibo_dictionary()
+    # Builds dictionary representing a freeweibo post from a dirty SQL result
+    clean_result = {}
+
+    clean_result['kp'] = dirty_result[0]
+    clean_result['content'] = dirty_result[2]
+    clean_result['weibo_id'] = dirty_result[4]
+    clean_result['pub_date'] = dirty_result[5]
+    clean_result['ret_date'] = dirty_result[6]
+    clean_result['lang_detected'] = dirty_result[7]
+    clean_result['confidence'] = dirty_result[8]
+    clean_result['bag_of_words'] = dirty_result[11]
+
+    clean_result = try_relevance(dirty_result, clean_result)
+
+    return clean_result
+
+def try_relevance(dirty_result, clean_result):
+    # try_relevance()
+    # Method to determine if a relevance score was assigned, and to modify the clean result dict
+    # to reflect that discovery.
+    try:
+        # If user didn't use keywords there will be no relevance index at the last position
+        clean_result['relevance'] = dirty_result[-1]
+    except IndexError:
+        clean_result['relevance'] = 0
+
+    return clean_result
