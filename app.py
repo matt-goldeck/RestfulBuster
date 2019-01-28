@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from flask import Flask, request
 from flask_restful import Resource, Api, reqparse
 from json import dumps
@@ -15,6 +16,21 @@ class Multiple_Articles(Resource):
         response = {'count':len(article_list), 'articles':article_list}
         return response
 
+class Free_Weibo(Resource):
+    def get(self):
+        data_type = 'freeweibo'
+        post_list = get_corpora_results(data_type)
+
+        response = {'count':len(post_list), 'posts':post_list}
+        return response
+
+class Novaya_Gazeta(Resource):
+    def get(self):
+        data_type = 'novaya_gazeta'
+        article_list = get_corpora_results(data_type)
+
+        response = {'count':len(article_list), 'articles':article_list}
+        return response
 class Specific_Article(Resource):
     def get(self):
         # one argument, no need to use Build_Get()
@@ -56,32 +72,10 @@ class Corpora_Metrics(Resource):
 
         return response
 
-class Free_Weibo(Resource):
-    def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument('text')
-        result = parser.parse_args()
-        return result
-
-class Novaya_Gazeta(Resource):
-    def get(self):
-        data_type = 'novaya_gazeta'
-        article_list = get_corpora_results(data_type)
-
-        response = {'count':len(article_list), 'articles':article_list}
-        return response
-
-
-api.add_resource(Multiple_Articles, '/RestfulBuster/multi_article')
-api.add_resource(Specific_Article, '/RestfulBuster/spec_article')
-api.add_resource(Corpora_Metrics, '/RestfulBuster/corpora_metrics')
-api.add_resource(Free_Weibo, '/RestfulBuster/freeweibo')
-api.add_resource(Novaya_Gazeta, '/RestfulBuster/multi_novaya')
-
 def get_corpora_results(data_type):
     # get_corpora_results()
-    # Assembles a paraser object custom tailored to the data_type and performs a query
-    # with it, returning a formatted list of dictionary results. Intended for search functionality
+    # Assembles a bespoke parser object, grabs arguments, and queries Corpora. Returns formatted
+    # list.
 
     parser = build_get_parser(data_type=data_type)
     args = parser.parse_args()
@@ -89,15 +83,14 @@ def get_corpora_results(data_type):
     query = CorporaQuery(args, plurality = True, data_type=data_type)
     retrieved_items = query.get_result()
 
+    # Process results; datetime not json-serializable TODO: better solution exists (?)
     item_list = []
-    # Process results; datetime not json-serializable, better solution exists (?)
+
     if retrieved_items:
-        print retrieved_items
         for item in retrieved_items:
-            if item:
-                item['pub_date'] = str(item['pub_date'])
-                item['ret_date'] = str(item['ret_date'])
-                item_list.append(item)
+            item['ret_date'] = str(item['ret_date']).encode("utf8")
+            item['pub_date'] = str(item['pub_date']).encode("utf8")
+            item_list.append(item)
 
     return item_list
 
@@ -115,5 +108,12 @@ def build_get_parser(data_type):
         parser.add_argument('category', help='The category of RSS feed the article came from. Note: Only one')
 
     return parser
+
+api.add_resource(Multiple_Articles, '/RestfulBuster/multi_article')
+api.add_resource(Specific_Article, '/RestfulBuster/spec_article')
+api.add_resource(Corpora_Metrics, '/RestfulBuster/corpora_metrics')
+api.add_resource(Free_Weibo, '/RestfulBuster/freeweibo')
+api.add_resource(Novaya_Gazeta, '/RestfulBuster/multi_novaya')
+
 if __name__ == '__main__':
     app.run(debug=True)
