@@ -9,9 +9,9 @@ More information information can be found -> www.netsci.montclair.edu
 A collection of content useful in studies of government web censorship is either manually or automatically extracted and then stored on a MySQL server at Montclair State University. This application aims to provide easy, RESTful access to the aforementioned content. As of right now this content, broadly speaking, is:
  - RSS Articles: Articles scraped from RSS feeds in both their original text form and a processed 'bag-of-words'. Associated metrics are included.
  - FreeWeibo Content: Posts and topics that have been determined to have been censored by the FreeWeibo Project. Stored similarly to articles.
- - More, eventually.
+ - Novaya Gazeta: Articles from the Novaya Gazeta, a Russian newspaper known for critical and controversial coverage of political and social affairs in Russia.
  
-Search through this content works very crudely. I ~~stole~~ was inspired by some common blog search algorithms that look through the content of each post and assign points based on whether or not the whole query or parts of the query are present. As news articles and social media posts are very similiar to blogs, I felt this suited the need rather well. Relevance points are assigned very unscientifically to the standard of "had a good gut feeling about it." They are described in this table:
+Search through this content works very crudely. I ~~stole~~ was inspired by some common blog search algorithms that look through the content of each post and assign points based on whether or not the whole query or parts of the query are present. As news articles and social media posts are very similiar to blogs, I felt this suited the need rather well. Relevance points are assigned very unscientifically to the standard of "I had a good gut feeling about it." They are described in this table:
 
 Match | Score
 ------|------
@@ -20,14 +20,16 @@ Complete phrase in the content | 7
 Keyword appearance in the title | 5
 Keyword appearance in the content | 3
 
-As of right now, search is only available through articles, though this feature should be flexible enough to expand onto any other content with the right amount of work.
+Search is generalized and abstracted in the CorporaQuery object as to provide search through any medium stored in Corpora with only minimal overhead. 
+
+Note: Stored FreeWeibo posts and Novaya articles have no titles, and thus points are currently not assigned for appearances in them.
  
 
 # Endpoints
 There are currently **3** endpoints:
 
 ## specific_article
-Provides access to a single article, specified by the KP parameter. Very straightforward.
+Provides access to a single article, specified by the KP parameter. Very straightforward. This functionality should be abstracted as to provide access to specific points in other data types.
 
 **Parameters:**
 - kp: The unique primary key assigned to the article. 
