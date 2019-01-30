@@ -29,7 +29,9 @@ class Novaya_Gazeta(Resource):
         data_type = 'novaya_gazeta'
         article_list = get_corpora_results(data_type)
 
+        print [x['ret_date'] for x in article_list]
         response = {'count':len(article_list), 'articles':article_list}
+        print article_list[0]
         return response
 class Specific_Article(Resource):
     def get(self):
