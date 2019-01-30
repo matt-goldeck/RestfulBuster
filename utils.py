@@ -227,17 +227,26 @@ class CorporaQuery:
         return sql
 
     def scrub_results(self, dirty_results):
+        # scrub_results()
+        # Properly format and 'clean' raw data from SQL for final json object
+
         clean_list = []
 
-        for dirty in dirty_results:
-            print dirty
-            if self.data_type == 'articles':
-                clean_result = build_article_dictionary(dirty)
-            elif self.data_type == 'novaya_gazeta':
-                clean_result = build_novaya_dictionary(dirty)
-            elif self.data_type == 'freeweibo':
-                clean_result = build_freeweibo_dictionary(dirty)
+        # Did we use search? Set a flag so later methods know to look for a rel score.
+        if self.search_string:
+            relevance = True
+        else:
+            relevance = False
 
+        for dirty in dirty_results:
+            if self.data_type == 'articles':
+                clean_result = build_article_dictionary(dirty, relevance)
+            elif self.data_type == 'novaya_gazeta':
+                clean_result = build_novaya_dictionary(dirty, relevance)
+            elif self.data_type == 'freeweibo':
+                clean_result = build_freeweibo_dictionary(dirty, relevance)
+
+            print "Cleaned", "Pub_date", clean_result['pub_date'], 'Ret_date', clean_result['ret_date']
             clean_list.append(clean_result)
 
         self.scrubbed_results = clean_list
@@ -284,7 +293,7 @@ def filter_search_keys(query):
             words.append(key.encode("utf8"))
     return words
 
-def build_article_dictionary(dirty_result):
+def build_article_dictionary(dirty_result, relevance):
     # build_article_dictionary()
     # Builds dictionary representing an RSS article from a dirty SQL result
     clean_result = {}
@@ -304,28 +313,28 @@ def build_article_dictionary(dirty_result):
     clean_result['marked_by_proc'] = dirty_result[14]
     clean_result['bag_of_words'] = dirty_result[15]
 
-    clean_result = try_relevance(dirty_result, clean_result)
+    clean_result = try_relevance(dirty_result, clean_result, relevance)
 
     return clean_result
 
-def build_novaya_dictionary(dirty_result):
+def build_novaya_dictionary(dirty_result, relevance):
     # build_novaya_dictionary()
     # Builds dictionary representing a Novaya article from a dirty SQL result
     clean_result = {}
 
     clean_result['kp'] = dirty_result[0]
-    clean_result['pub_date'] = dirty_result[1]
+    clean_result['pub_date'] = dirty_result[1].date()
     clean_result['author'] = dirty_result[2]
     clean_result['original_post'] = dirty_result[3]
     clean_result['content'] = dirty_result[4]
     clean_result['category'] = dirty_result[5]
-    clean_result['ret_date'] = dirty_result[6]
+    clean_result['ret_date'] = dirty_result[6].date()
 
-    clean_result = try_relevance(dirty_result, clean_result)
+    clean_result = try_relevance(dirty_result, clean_result, relevance)
 
     return clean_result
 
-def build_freeweibo_dictionary(dirty_result):
+def build_freeweibo_dictionary(dirty_result, relevance):
     # build_freeweibo_dictionary()
     # Builds dictionary representing a freeweibo post from a dirty SQL result
     clean_result = {}
@@ -339,18 +348,16 @@ def build_freeweibo_dictionary(dirty_result):
     clean_result['confidence'] = dirty_result[8]
     clean_result['bag_of_words'] = dirty_result[11]
 
-    clean_result = try_relevance(dirty_result, clean_result)
+    clean_result = try_relevance(dirty_result, clean_result, relevance)
 
     return clean_result
 
-def try_relevance(dirty_result, clean_result):
+def try_relevance(dirty_result, clean_result, relevance):
     # try_relevance()
-    # Method to determine if a relevance score was assigned, and to modify the clean result dict
-    # to reflect that discovery.
-    try:
-        # If user didn't use keywords there will be no relevance index at the last position
+    # Method to assign a relevance score
+    if relevance:
         clean_result['relevance'] = dirty_result[-1]
-    except IndexError:
+    else:
         clean_result['relevance'] = 0
 
     return clean_result
