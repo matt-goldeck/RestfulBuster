@@ -3,7 +3,7 @@ Provides easy access and search through content on the NetSci Lab database. An e
 
 Works in conjuction with Apollo -> https://github.com/leberkc/nlp-news-aggregator
 
-More information information can be found -> www.netsci.montclair.edu 
+More information can be found -> www.netsci.montclair.edu 
 
 # Basic Gist
 A collection of content useful in studies of government web censorship is either manually or automatically extracted and then stored on a MySQL server at Montclair State University. This application aims to provide easy, RESTful access to the aforementioned content. As of right now this content, broadly speaking, is:
