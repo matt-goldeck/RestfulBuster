@@ -33,7 +33,7 @@ Provides access to a single article, specified by the KP parameter. Very straigh
 
 **HTTP Request**
 
-`GET https://___.com/RestfulBuster/article `
+`GET https://___.com/RestfulBuster/article`
 
 **Parameters:**
 - kp: The unique primary key assigned to the article. 
@@ -42,7 +42,7 @@ Provides access to a single article, specified by the KP parameter. Very straigh
 
 Input: 
 
-`http://www.___.com/RestfulBuster/article?kp=1
+`http://www.___.com/RestfulBuster/article?kp=1`
 
 Output: 
 ```
