@@ -26,10 +26,14 @@ Note: Stored FreeWeibo posts and Novaya articles have no titles, and thus points
  
 
 # Endpoints
-There are currently **3** endpoints:
+There are currently **5** endpoints:
 
-## specific_article
-Provides access to a single article, specified by the KP parameter. Very straightforward. This functionality should be abstracted as to provide access to specific points in other data types.
+## Specific_Article
+Provides access to a single article, specified by the KP parameter. Very straightforward. This functionality *should* be abstracted as to provide access to specific points in other data types.
+
+**HTTP Request**
+
+`GET https://___.com/RestfulBuster/article `
 
 **Parameters:**
 - kp: The unique primary key assigned to the article. 
@@ -38,7 +42,7 @@ Provides access to a single article, specified by the KP parameter. Very straigh
 
 Input: 
 
-`http://www.___.com/RestfulBuster/spec_article?kp=1`
+`http://www.___.com/RestfulBuster/article?kp=1
 
 Output: 
 ```
@@ -60,22 +64,25 @@ Output:
     "url": "http://www.mattnews.com/breaking/garbage?source=connect.github"
 }
 ```
-## multi_article
-Multiple parameters allow customizable search through the database of collected articles. If no parameters are specified, all articles will be returned.
+## Multiple_Article
+Provides search through the database of collected articles. If no parameters are specified, 500 articles will be returned.
+
+**HTTP Request**
+
+`GET https://___.com/RestfulBuster/multi_article`
 
 **Parameters:**
-
+- category: The category of RSS feed this article came from. Matched against the rss table then joined with the article_source table. Only one category can be specified. If no value is specified, defaults to all categories. 
 - search_string: Text separated by underscores. Stop words and dangerous words are removed from a maintained list before usage in SQL. If no value is specified, does not use text-based search.
 - min_relevancy: The minimum relevance score for an article to show up in search results. If no value is specified, defaults to 1.
-- category: The category of RSS feed this article came from. Matched against the rss table then joined with the article_source table. Only one category can be specified. If no value is specified, defaults to all categories. 
 - time_start: The earliest point an article could have been published to return in the search results. If no value is specified, pulls article from earliest point.
 - time_end: The latest point an article could have been published to return in the search results. If no value is specified, pulls articles up until latest point.
-- article_limit: The maximum number of articles to return in the search. If no value specified, defaults to 500.
+- item_limit: The maximum number of articles to return in the search. If no value specified, defaults to 500.
 
 **Example:**
 
 Input:
-`http://www.____.com/RestfulBuster/multi_article?search_string=toast_college_student&time_end=19960101&time_start=20180101&min_relevancy=3&article_limit=1&category=Domestic`
+`http://www.____.com/RestfulBuster/multi_article?search_string=toast_college_student&time_end=19960101&time_start=20180101&min_relevancy=3&item_limit=1&category=Domestic`
 ```
 {
     "articles": [
@@ -117,6 +124,81 @@ Input:
     "count": 2
 }
 ```
+## Novaya_Gazeta
+Provides search through the database of collected articles. If no parameters are specified, 500 articles will be returned. Note that stored novaya articles have no title, and thus will return lower relevance scores. Returned text will be in escaped unicode instead of the original Cyrillic text. 
+
+**HTTP Request**
+
+`GET https://___.com/RestfulBuster/multi_novaya`
+
+**Parameters:**
+- search_string: Text separated by underscores. Stop words and dangerous words are removed from a maintained list before usage in SQL. If no value is specified, does not use text-based search.
+- min_relevancy: The minimum relevance score for an article to show up in search results. If no value is specified, defaults to 1.
+- time_start: The earliest point an article could have been published to return in the search results. If no value is specified, pulls article from earliest point.
+- time_end: The latest point an article could have been published to return in the search results. If no value is specified, pulls articles up until latest point.
+- item_limit: The maximum number of articles to return in the search. If no value specified, defaults to 500.
+
+**Example**
+
+Input: `http://www.___.com/RestfulBuster/multi_novaya?limit=1`
+
+Output:
+
+```
+{
+    "articles": [
+        {
+            "author": "\u00d0\u0091\u00d0\u00b5\u00d0\u00b7 \u00d0\u00b0\u00d0\u00b2\u00d1\u0082\u00d0\u00be\u00d1\u0080\u00d0\u00b0\n", 
+            "category": "Economy", 
+            "content": "\u00d0\u0098 \u00d0\u00bf\u00d0\u00be\u00d1\u0081\u00d0\u00bb\u00d0\u00b5\u00d0\u00b4\u00d0\u00bd\u00d0\u00b5\u00d0\u00b5. \u00d0\u0097\u00d0\u00b0 \u00d0\u00bc\u00d0\u00bd\u00d0\u00be\u00d0\u00b3\u00d0\u00b8\u00d0\u00b5 \u00d0\u00b3\u00d0\u00be\u00d0\u00b4\u00d1\u008b \u00d1\u0080\u00d1\u0083\u00d0\u00ba\u00d0\u00be\u00d0\u00b2\u00d0\u00be\u00d0\u00b4\u00d1\u0081\u00d1\u0082\u00d0\u00b2\u00d0\u00be \u00c2\u00ab\u00d0\u00a2\u00d0\u00be\u00d0\u00bb\u00d1\u008c\u00d1\u008f\u00d1\u0082\u00d1\u0082\u00d0\u00b8\u00d0\u00b0\u00d0\u00b7\u00d0\u00be\u00d1\u0082\u00d0\u00b0\u00c2\u00bb \u00d0\u00bd\u00d0\u00b5 \u00d0\u00bf\u00d0\u00be\u00d0\u00bb\u00d1\u0083\u00d1\u0087\u00d0\u00b8\u00d0\u00bb\u00d0\u00be \u00d0\u00bd\u00d0\u00b8 \u00d0\u00be\u00d0\u00b4\u00d0\u00bd\u00d0\u00be\u00d0\u00b3\u00d0\u00be \u00d0\u00be\u00d1\u0084\u00d0\u00b8\u00d1\u0086\u00d0\u00b8\u00d0\u00b0\u00d0\u00bb\u00d1\u008c\u00d0\u00bd\u00d0\u00be\u00d0\u00b3\u00d0\u00be \u00d0\u00be\u00d1\u0082\u00d0\u00b2\u00d0\u00b5\u00d1\u0082\u00d0\u00b0 \u00d0\u00bd\u00d0\u00b0 \u00d1\u0081\u00d0\u00b2\u00d0\u00be\u00d0\u00b8 \u00d0\u00be\u00d0\u00b1\u00d1\u0080\u00d0\u00b0\u00d1\u0089\u00d0\u00b5\u00d0\u00bd\u00d0\u00b8\u00d1\u008f \u00d0\u00b2 \u00d0\u00be\u00d1\u0080\u00d0\u00b3\u00d0\u00b0\u00d0\u00bd\u00d1\u008b \u00d1\u0084\u00d0\u00b5\u00d0\u00b4\u00d0\u00b5\u00d1\u0080\u00d0\u00b0\u00d0\u00bb\u00d1\u008c\u00d0\u00bd\u00d0\u00be\u00d0\u00b9 \u00d0\u00b8 \u00d0\u00ba\u00d1\u0080\u00d0\u00b0\u00d0\u00b5\u00d0\u00b2\u00d0\u00be\u00d0\u00b9 \u00d0\u00b8\u00d1\u0081\u00d0\u00bf\u00d0\u00be\u00d0\u00bb\u00d0\u00bd\u00d0\u00b8\u00d1\u0082\u00d0\u00b5\u00d0\u00bb\u00d1\u008c\u00d0\u00bd\u00d0\u00be\u00d0\u00b9 \u00d0\u00b2\u00d0\u00bb\u00d0\u00b0\u00d1\u0081\u00d1\u0082\u00d0\u00b8. \u00d0\u0098\u00d0\u00bd\u00d1\u0082\u00d0\u00b5\u00d1\u0080\u00d0\u00b5\u00d1\u0081\u00d0\u00bd\u00d0\u00b0\u00d1\u008f \u00d1\u0081\u00d0\u00b8\u00d0\u00bd\u00d1\u0085\u00d1\u0080\u00d0\u00be\u00d0\u00bd\u00d0\u00bd\u00d0\u00be\u00d1\u0081\u00d1\u0082\u00d1\u008c, \u00d0\u00bd\u00d0\u00b5 \u00d0\u00bf\u00d1\u0080\u00d0\u00b0\u00d0\u00b2\u00d0\u00b4\u00d0\u00b0 \u00d0\u00bb\u00d0\u00b8?\n", 
+            "kp": 1, 
+            "original_post": "\u00d0\u00ad\u00d1\u0082\u00d0\u00be\u00d1\u0082 \u00d0\u00bc\u00d0\u00b0\u00d1\u0082\u00d0\u00b5\u00d1\u0080\u00d0\u00b8\u00d0\u00b0\u00d0\u00bb \u00d0\u00b2\u00d1\u008b\u00d1\u0088\u00d0\u00b5\u00d0\u00bb \u00d0\u00b2 \u00e2\u0084\u0096 143 \u00d0\u00be\u00d1\u0082 20 \u00d0\u00b4\u00d0\u00b5\u00d0\u00ba\u00d0\u00b0\u00d0\u00b1\u00d1\u0080\u00d1\u008f 2010 \u00d0\u00b3.", 
+            "pub_date": "2010-12-20", 
+            "relevance": 0, 
+            "ret_date": "2019-01-24"
+        }
+    ], 
+    "count": 1
+}
+```
+
+## Free_Weibo
+Provides search through the database of collected Free Weibo posts. If no parameters are specified, 500 posts will be returned. Note that stored weibo posts have no title, and thus will return lower relevance scores. Returned text will be in escaped unicode, and include raw HTML from the weibo post.
+
+**HTTP Request**
+
+`GET https://___.com/RestfulBuster/multi_weibo`
+
+**Parameters:**
+- search_string: Text separated by underscores. Stop words and dangerous words are removed from a maintained list before usage in SQL. If no value is specified, does not use text-based search. e.g - 'Donald_Trump_Wall'
+- min_relevancy: The minimum relevance score for an article to show up in search results. If no value is specified, defaults to 1.
+- time_start: The earliest point an article could have been published to return in the search results. If no value is specified, pulls article from earliest point.
+- time_end: The latest point an article could have been published to return in the search results. If no value is specified, pulls articles up until latest point.
+- item_limit: The maximum number of articles to return in the search. If no value specified, defaults to 500.
+
+**Example:**
+
+Input: `GET http://www.___.com/RestfulBuster/multi_weibo?item_limit=1`
+
+Output: 
+```
+{
+  "count": 1,
+  "posts": [
+    {
+      "bag_of_words": null,
+      "confidence": 1,
+      "weibo_id": "4209652352950309",
+      "ret_date": "2018-02-21 22:47:13",
+      "content": "<a href=\"/weibo/%40%E5%96%B7%E5%9A%8F%E7%BD%91%E9%93%82%E7%A8%8B\">\\u55b7\\u568f\\u7f51\\u94c2\\u7a0b</a>\\uff1a//<a href=\"/weibo/%40%E4%BA%92%E8%81%94%E7%BD%91%E7%9A%84%E9%82%A3%E7%82%B9%E4%BA%8B\">@\\u4e92\\u8054\\u7f51\\u7684\\u90a3\\u70b9\\u4e8b</a>:[\\u6316\\u9f3b]//<a href=\"/weibo/%40%E5%93%8D%E9%A9%AC\">@\\u54cd\\u9a6c</a>:\\u5c4c\\u70b8\\u4e86 //<a href=\"/weibo/%40%E6%8C%89%E7%85%A7%E5%9F%BA\">@\\u6309\\u7167\\u57fa</a>xb7\\u672cxb7\\u6cd5-\\u9ad8\\u68a8\\u592a\\u90ce:\\u4e3a\\u4e86\\u52a0\\u901f<span style=\"color:red\">\\u5feb\\u89c6\\u9891</span>\\u6b7b\\u4ea1\\uff0c\\u800c\\u4e0a\\u4f20\\u8272\\u60c5\\u548c\\u90a3\\u4e2a\\u7537\\u4eba\\u7684\\u89c6\\u9891\\u7684\\u884c\\u4e3a\\u4e5f\\u662f\\u6709\\u75c5[\\u5410] <a href=\"http://t.cn/RRFmYhj\" target=\"_BLANK\">http://t.cn/RRFmYhj</a>",
+      "relevance": 0,
+      "kp": 1,
+      "lang_detected": "zh",
+      "pub_date": "2018-02-21 00:06:00"
+    }
+  ]
+}
+```
 
 ## corpora_metrics
 Provides quick and efficient access to content metrics.
@@ -131,10 +213,10 @@ Input: `http://www.___.com/RestfulBuster/corpora_metrics`
 Output: 
 ```
 {
-    "article_count": 78957,
-    "freeweibo_count": 56451,
-    "freeweibo_topic_count": 167895,
-    "rss_count": 34
+  "rss_count": 32,
+  "freeweibo_topic_count": 1594983,
+  "novaya_count": 2353,
+  "freeweibo_count": 5026,
+  "article_count": 86169
 }
 ```
-
