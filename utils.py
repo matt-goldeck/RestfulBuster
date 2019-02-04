@@ -233,9 +233,8 @@ class CorporaQuery:
         clean_list = []
 
         # Did we use search? Set a flag so later methods know to look for a rel score.
-        if self.plurality:
-            if self.searh_string:
-                relevance = True
+        if self.plurality and self.search_string:
+            relevance = True
         else:
             relevance = False
 
