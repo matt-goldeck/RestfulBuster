@@ -82,7 +82,6 @@ class CorporaQuery:
         # Queries and returns formatted result associated with this query
 
         corpora = DatabaseConnection()
-        print self.sql
 
         # If we haven't generated a result or we're repeating the search, query the DB
         if not self.scrubbed_results or repeat_search:
@@ -115,6 +114,11 @@ class CorporaQuery:
         else:
             self.category = None
             self.cat_kp_list = None
+
+        if args['offset']:
+            self.offset = args['offset']
+        else:
+            self.offset = 0
 
     def format_dates(self):
         # format_dates()
@@ -220,9 +224,8 @@ class CorporaQuery:
         # If not doing any filtering whatsoever -> pull all the articles
         if not self.sort_by_first and not self.sort_by_last and not self.search_string:
             sql = "{0} FROM {1} a".format(sql, self.data_type)
-        # If enforcing limit -> do so;
-        if self.item_limit and int(self.item_limit) > 0:
-            sql = "{0} LIMIT {1}".format(sql, self.item_limit)
+        # Enforcing limits; paging with LIMIT - retrieve from offset until item_limit
+        sql = "{0} LIMIT {1},{2}".format(sql, self.offset, self.item_limit)
 
         return sql
 
@@ -246,7 +249,6 @@ class CorporaQuery:
             elif self.data_type == 'freeweibo':
                 clean_result = build_freeweibo_dictionary(dirty, relevance)
 
-            print "Cleaned", "Pub_date", clean_result['pub_date'], 'Ret_date', clean_result['ret_date']
             clean_list.append(clean_result)
 
         self.scrubbed_results = clean_list

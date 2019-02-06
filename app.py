@@ -29,9 +29,8 @@ class Novaya_Gazeta(Resource):
         data_type = 'novaya_gazeta'
         article_list = get_corpora_results(data_type)
 
-        print [x['ret_date'] for x in article_list]
         response = {'count':len(article_list), 'articles':article_list}
-        print article_list[0]
+
         return response
 class Specific_Article(Resource):
     def get(self):
@@ -105,6 +104,7 @@ def build_get_parser(data_type):
     parser.add_argument('time_end', help='The latest point that an item could have been retrieved.')
     parser.add_argument('search_string', help='A string of words seperated by underscores.')
     parser.add_argument('item_limit', type=int, help='The maximum number of items to return.')
+    parser.add_argument('offset', type=int, help='The offset of items to retrieve.')
 
     if data_type == 'articles':
         parser.add_argument('category', help='The category of RSS feed the article came from. Note: Only one')
