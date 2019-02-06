@@ -26,7 +26,6 @@ Note: Stored FreeWeibo posts and Novaya articles have no titles, and thus points
  
 
 # Endpoints
-There are currently **5** endpoints:
 
 ## Specific_Article
 Provides access to a single article, specified by the KP parameter. Very straightforward. This functionality *should* be abstracted as to provide access to specific points in other data types.
@@ -78,6 +77,7 @@ Provides search through the database of collected articles. If no parameters are
 - time_start: The earliest point an article could have been published to return in the search results. If no value is specified, pulls article from earliest point.
 - time_end: The latest point an article could have been published to return in the search results. If no value is specified, pulls articles up until latest point.
 - item_limit: The maximum number of articles to return in the search. If no value specified, defaults to 500.
+- offset: The offset at which to pull articles from. An offset of 5 will pull articles [6,item_limit].
 
 **Example:**
 
@@ -137,6 +137,7 @@ Provides search through the database of collected articles. If no parameters are
 - time_start: The earliest point an article could have been published to return in the search results. If no value is specified, pulls article from earliest point.
 - time_end: The latest point an article could have been published to return in the search results. If no value is specified, pulls articles up until latest point.
 - item_limit: The maximum number of articles to return in the search. If no value specified, defaults to 500.
+- offset: The offset at which to pull articles from. An offset of 5 will pull articles [6,item_limit].
 
 **Example**
 
@@ -174,7 +175,8 @@ Provides search through the database of collected Free Weibo posts. If no parame
 - min_relevancy: The minimum relevance score for an article to show up in search results. If no value is specified, defaults to 1.
 - time_start: The earliest point an article could have been published to return in the search results. If no value is specified, pulls article from earliest point.
 - time_end: The latest point an article could have been published to return in the search results. If no value is specified, pulls articles up until latest point.
-- item_limit: The maximum number of articles to return in the search. If no value specified, defaults to 500.
+- item_limit: The maximum number of items to return in the search. If no value specified, defaults to 500.
+- offset: The offset at which to pull items from. An offset of 5 will pull items [6,item_limit].
 
 **Example:**
 
