@@ -26,14 +26,23 @@ Note: Stored FreeWeibo posts and Novaya articles have no titles, and thus points
  
 
 # Endpoints
-There are currently **5** endpoints:
+There are currently **5** endpoints. Shorthand, they look like this:
+
+Method | URL | Params | Results
+-------|-----|--------|----------
+GET|/api/corpora_metrics|None| Returns counts of entries in database
+GET|/api/article|kp| Returns the information of a specific article
+GET|/api/multi_article|category, search_string, time_start, time_end, item_limit| Returns array of article objects and a count
+GET|/api/multi_novaya|search_string, time_start, time_end, item_limit| Returns array of article objects and a count
+GET|/api/multi_weibo|search_string, time_start, time_end, item_limit| Returns array of weibo posts and a count
+
 
 ## Specific_Article
 Provides access to a single article, specified by the KP parameter. Very straightforward. This functionality *should* be abstracted as to provide access to specific points in other data types.
 
 **HTTP Request**
 
-`GET https://___.com/RestfulBuster/article`
+`GET api/article`
 
 **Parameters:**
 - kp: The unique primary key assigned to the article. 
@@ -42,7 +51,7 @@ Provides access to a single article, specified by the KP parameter. Very straigh
 
 Input: 
 
-`http://www.___.com/RestfulBuster/article?kp=1`
+`http://www.___.com/api/article?kp=1`
 
 Output: 
 ```
@@ -69,7 +78,7 @@ Provides search through the database of collected articles. If no parameters are
 
 **HTTP Request**
 
-`GET https://___.com/RestfulBuster/multi_article`
+`GET api/multi_article`
 
 **Parameters:**
 - category: The category of RSS feed this article came from. Matched against the rss table then joined with the article_source table. Only one category can be specified. If no value is specified, defaults to all categories. 
@@ -82,7 +91,7 @@ Provides search through the database of collected articles. If no parameters are
 **Example:**
 
 Input:
-`http://www.____.com/RestfulBuster/multi_article?search_string=toast_college_student&time_end=19960101&time_start=20180101&min_relevancy=3&item_limit=1&category=Domestic`
+`http://www.____.com/api/multi_article?search_string=toast_college_student&time_end=19960101&time_start=20180101&min_relevancy=3&item_limit=1&category=Domestic`
 ```
 {
     "articles": [
@@ -129,7 +138,7 @@ Provides search through the database of collected articles. If no parameters are
 
 **HTTP Request**
 
-`GET https://___.com/RestfulBuster/multi_novaya`
+`GET api/multi_novaya`
 
 **Parameters:**
 - search_string: Text separated by underscores. Stop words and dangerous words are removed from a maintained list before usage in SQL. If no value is specified, does not use text-based search.
@@ -140,7 +149,7 @@ Provides search through the database of collected articles. If no parameters are
 
 **Example**
 
-Input: `http://www.___.com/RestfulBuster/multi_novaya?limit=1`
+Input: `http://www.___.com/api/multi_novaya?limit=1`
 
 Output:
 
@@ -167,7 +176,7 @@ Provides search through the database of collected Free Weibo posts. If no parame
 
 **HTTP Request**
 
-`GET https://___.com/RestfulBuster/multi_weibo`
+`GET /api/multi_weibo`
 
 **Parameters:**
 - search_string: Text separated by underscores. Stop words and dangerous words are removed from a maintained list before usage in SQL. If no value is specified, does not use text-based search. e.g - 'Donald_Trump_Wall'
@@ -178,7 +187,7 @@ Provides search through the database of collected Free Weibo posts. If no parame
 
 **Example:**
 
-Input: `GET http://www.___.com/RestfulBuster/multi_weibo?item_limit=1`
+Input: `GET http://www.___.com/api/multi_weibo?item_limit=1`
 
 Output: 
 ```
@@ -208,7 +217,7 @@ None
 
 **Example:**
 
-Input: `http://www.___.com/RestfulBuster/corpora_metrics`
+Input: `http://www.___.com/api/corpora_metrics`
 
 Output: 
 ```
