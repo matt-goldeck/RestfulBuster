@@ -111,11 +111,11 @@ def build_get_parser(data_type):
 
     return parser
 
-api.add_resource(Multiple_Articles, '/RestfulBuster/multi_article')
-api.add_resource(Specific_Article, '/RestfulBuster/article')
-api.add_resource(Corpora_Metrics, '/RestfulBuster/corpora_metrics')
-api.add_resource(Free_Weibo, '/RestfulBuster/multi_weibo')
-api.add_resource(Novaya_Gazeta, '/RestfulBuster/multi_novaya')
+api.add_resource(Multiple_Articles, '/multi_article')
+api.add_resource(Specific_Article, '/article')
+api.add_resource(Corpora_Metrics, '/corpora_metrics')
+api.add_resource(Free_Weibo, '/multi_weibo')
+api.add_resource(Novaya_Gazeta, '/multi_novaya')
 
 if __name__ == '__main__':
     app.run(debug=True)
