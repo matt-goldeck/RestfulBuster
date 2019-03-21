@@ -24,6 +24,17 @@ Search is generalized and abstracted in the CorporaQuery object as to provide se
 
 Note: Stored FreeWeibo posts and Novaya articles have no titles, and thus points are currently not assigned for appearances in them.
  
+# Endpoints
+There are currently **5** endpoints. They look like this:
+
+Method | URL | Params | Results
+-------|-----|--------|----------
+GET|/api/corpora_metrics|None| Returns counts of entries in database
+GET|/api/article|kp| Returns the information of a specific article
+GET|/api/multi_article|category, search_string, time_start, time_end, item_limit| Returns array of article objects and a count
+GET|/api/multi_novaya|search_string, time_start, time_end, item_limit| Returns array of article objects and a count
+GET|/api/multi_weibo|search_string, time_start, time_end, item_limit| Returns array of weibo posts and a count
+
 
 ## Specific_Article
 Provides access to a single article, specified by the KP parameter. Very straightforward. This functionality *should* be abstracted as to provide access to specific points in other data types.
